@@ -17,6 +17,7 @@ import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.entity.mime.content.StringBody;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 
@@ -40,7 +41,10 @@ public class HttpWorker {
 	private CloseableHttpClient client;
 
 	private HttpWorker(){
-		client = HttpClientBuilder.create().build();
+		PoolingHttpClientConnectionManager cm = new PoolingHttpClientConnectionManager();
+		cm.setMaxTotal(10000);//连接池最大并发连接数
+		cm.setDefaultMaxPerRoute(1000);//单路由最大并发数
+		client = HttpClientBuilder.create().setConnectionManager(cm).build();
 	}
 
 	public static HttpWorker create(RequestConfig requestConfig){

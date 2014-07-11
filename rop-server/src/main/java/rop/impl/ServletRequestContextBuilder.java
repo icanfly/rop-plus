@@ -1,7 +1,6 @@
 
 package rop.impl;
 
-import com.alibaba.tamper.BeanMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.commons.fileupload.FileItem;
@@ -14,8 +13,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.http.MediaType;
 import org.springframework.util.ClassUtils;
-import org.springframework.validation.*;
-import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.ObjectError;
+import org.springframework.validation.SmartValidator;
 import rop.*;
 import rop.annotation.HttpAction;
 import rop.annotation.ParamValid;
@@ -34,9 +35,7 @@ import java.beans.PropertyDescriptor;
 import java.io.UnsupportedEncodingException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * <pre>
@@ -61,8 +60,6 @@ public class ServletRequestContextBuilder implements RequestContextBuilder {
 	private SmartValidator validator;
 
 	private SessionManager sessionManager;
-
-	private static Map<Class<?>,BeanMap> beanMapper = new ConcurrentHashMap<Class<?>,BeanMap>();
 
 	public ServletRequestContextBuilder(ConverterContainer converterContainer, SessionManager sessionManager) {
 		this.converterContainer = converterContainer;
@@ -350,17 +347,6 @@ public class ServletRequestContextBuilder implements RequestContextBuilder {
 		final Object bindObject = BeanUtils.instantiateClass(classType);
 		try {
 			org.apache.commons.beanutils.BeanUtils.populate(bindObject, newRequestBodyMap);
-//			BeanMap beanMap = resolveBeanMap(classType);
-//			beanMap.populate(bindObject,newRequestBodyMap);
-
-//		try {
-//			populate(bindObject,propertyDescriptors,newRequestBodyMap);
-//		} catch (InvocationTargetException e) {
-//			throw new RopException("doBind error", e);
-//		} catch (IllegalAccessException e) {
-//			throw new RopException("doBind error", e);
-//		}
-
 		} catch (IllegalAccessException e) {
 			throw new RopException("doBind error", e);
 		} catch (InvocationTargetException e) {
@@ -385,36 +371,6 @@ public class ServletRequestContextBuilder implements RequestContextBuilder {
 
 		return bindingResult;
 
-	}
-
-	private void populate(Object bindObject, PropertyDescriptor[] propertyDescriptors, Map<String, Object> newRequestBodyMap) throws InvocationTargetException, IllegalAccessException {
-		for (PropertyDescriptor property : propertyDescriptors) {
-			String key = property.getName();
-			if (newRequestBodyMap.containsKey(key)) {
-				Object value = newRequestBodyMap.get(key);
-				// 得到property对应的setter方法
-				Method setter = property.getWriteMethod();
-				setter.invoke(bindObject, value);
-			}
-		}
-	}
-
-	private BeanMap resolveBeanMap(Class<?> classType) {
-		BeanMap beanMap = beanMapper.get(classType);
-		if(beanMap == null){
-			beanMap = BeanMap.create(classType);
-			beanMapper.put(classType,beanMap);
-		}
-		return beanMap;
-	}
-
-	private Validator getValidator() {
-		if (this.validator == null) {
-			LocalValidatorFactoryBean localValidatorFactoryBean = new LocalValidatorFactoryBean();
-			localValidatorFactoryBean.afterPropertiesSet();
-			this.validator = localValidatorFactoryBean;
-		}
-		return this.validator;
 	}
 
 	public void setValidator(SmartValidator validator) {

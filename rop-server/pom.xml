@@ -13,6 +13,10 @@
     <url>http://maven.apache.org</url>
     <dependencies>
         <dependency>
+            <groupId>com.alibaba.tamper</groupId>
+            <artifactId>tamper</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.github.rop</groupId>
             <artifactId>rop-common</artifactId>
             <version>${project.version}</version>

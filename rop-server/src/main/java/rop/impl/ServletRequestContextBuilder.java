@@ -1,6 +1,7 @@
 
 package rop.impl;
 
+import com.alibaba.tamper.BeanMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.commons.fileupload.FileItem;
@@ -34,6 +35,7 @@ import java.io.UnsupportedEncodingException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * <pre>
@@ -58,6 +60,8 @@ public class ServletRequestContextBuilder implements RequestContextBuilder {
 	private SmartValidator validator;
 
 	private SessionManager sessionManager;
+
+	private static Map<Class<?>,BeanMap> beanMapper = new ConcurrentHashMap<Class<?>,BeanMap>();
 
 	public ServletRequestContextBuilder(ConverterContainer converterContainer, SessionManager sessionManager) {
 		this.converterContainer = converterContainer;
@@ -342,13 +346,15 @@ public class ServletRequestContextBuilder implements RequestContextBuilder {
 
 		//作转换,效率可能存在一定问题
 		final Object bindObject = BeanUtils.instantiateClass(classType);
-		try {
-			org.apache.commons.beanutils.BeanUtils.populate(bindObject, newRequestBodyMap);
-		} catch (IllegalAccessException e) {
-			throw new RopException("doBind error", e);
-		} catch (InvocationTargetException e) {
-			throw new RopException("doBind error", e);
-		}
+//		try {
+//			org.apache.commons.beanutils.BeanUtils.populate(bindObject, newRequestBodyMap);
+			BeanMap beanMap = resolveBeanMap(classType);
+			beanMap.populate(bindObject,newRequestBodyMap);
+//		} catch (IllegalAccessException e) {
+//			throw new RopException("doBind error", e);
+//		} catch (InvocationTargetException e) {
+//			throw new RopException("doBind error", e);
+//		}
 		BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(bindObject, "bindObject");
 
 		//服务方法参数注解
@@ -368,6 +374,15 @@ public class ServletRequestContextBuilder implements RequestContextBuilder {
 
 		return bindingResult;
 
+	}
+
+	private BeanMap resolveBeanMap(Class<?> classType) {
+		BeanMap beanMap = beanMapper.get(classType);
+		if(beanMap == null){
+			beanMap = BeanMap.create(classType);
+			beanMapper.put(classType,beanMap);
+		}
+		return beanMap;
 	}
 
 	private Validator getValidator() {

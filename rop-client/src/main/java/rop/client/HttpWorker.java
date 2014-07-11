@@ -128,7 +128,7 @@ public class HttpWorker {
 	private void checkOK(CloseableHttpResponse response) {
 		StatusLine statusLine = response.getStatusLine();
 		if (statusLine.getStatusCode() != HttpStatus.SC_OK) {
-			throw new RuntimeException("error status code:" + statusLine.getStatusCode());
+			throw new RuntimeException("error status code:" + statusLine.getStatusCode() + ",detail message:"+statusLine.getReasonPhrase());
 		}
 	}
 

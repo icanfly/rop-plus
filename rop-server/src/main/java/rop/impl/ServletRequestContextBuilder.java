@@ -34,6 +34,7 @@ import java.beans.PropertyDescriptor;
 import java.io.UnsupportedEncodingException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -322,18 +323,19 @@ public class ServletRequestContextBuilder implements RequestContextBuilder {
 			newRequestBodyMap.put(entry.getKey(), entry.getValue());
 		}
 
+		BeanInfo bindObjectInfo = null;
+		try {
+			bindObjectInfo = Introspector.getBeanInfo(classType);
+		} catch (IntrospectionException e) {
+			throw new RopException("doBind error", e);
+		}
+		PropertyDescriptor[] propertyDescriptors = bindObjectInfo.getPropertyDescriptors();
+
 		if (isMultipartRequest(webRequest)) {
 			//处理multipart
 			//modify by luopeng 2014.06.20
-			BeanInfo bindObjectInfo = null;
-			try {
-				bindObjectInfo = Introspector.getBeanInfo(classType);
-			} catch (IntrospectionException e) {
-				throw new RopException("doBind error", e);
-			}
-			PropertyDescriptor[] propertyDescriptorses = bindObjectInfo.getPropertyDescriptors();
 
-			for (PropertyDescriptor propertyDescriptor : propertyDescriptorses) {
+			for (PropertyDescriptor propertyDescriptor : propertyDescriptors) {
 				String propertyName = propertyDescriptor.getName();
 				Class<?> propertyType = propertyDescriptor.getPropertyType();
 				if (converterContainer.support(propertyType) && requestBodyMap.containsKey(propertyName)) {
@@ -346,15 +348,24 @@ public class ServletRequestContextBuilder implements RequestContextBuilder {
 
 		//作转换,效率可能存在一定问题
 		final Object bindObject = BeanUtils.instantiateClass(classType);
+		try {
+			org.apache.commons.beanutils.BeanUtils.populate(bindObject, newRequestBodyMap);
+//			BeanMap beanMap = resolveBeanMap(classType);
+//			beanMap.populate(bindObject,newRequestBodyMap);
+
 //		try {
-//			org.apache.commons.beanutils.BeanUtils.populate(bindObject, newRequestBodyMap);
-			BeanMap beanMap = resolveBeanMap(classType);
-			beanMap.populate(bindObject,newRequestBodyMap);
-//		} catch (IllegalAccessException e) {
-//			throw new RopException("doBind error", e);
+//			populate(bindObject,propertyDescriptors,newRequestBodyMap);
 //		} catch (InvocationTargetException e) {
 //			throw new RopException("doBind error", e);
+//		} catch (IllegalAccessException e) {
+//			throw new RopException("doBind error", e);
 //		}
+
+		} catch (IllegalAccessException e) {
+			throw new RopException("doBind error", e);
+		} catch (InvocationTargetException e) {
+			throw new RopException("doBind error", e);
+		}
 		BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(bindObject, "bindObject");
 
 		//服务方法参数注解
@@ -374,6 +385,18 @@ public class ServletRequestContextBuilder implements RequestContextBuilder {
 
 		return bindingResult;
 
+	}
+
+	private void populate(Object bindObject, PropertyDescriptor[] propertyDescriptors, Map<String, Object> newRequestBodyMap) throws InvocationTargetException, IllegalAccessException {
+		for (PropertyDescriptor property : propertyDescriptors) {
+			String key = property.getName();
+			if (newRequestBodyMap.containsKey(key)) {
+				Object value = newRequestBodyMap.get(key);
+				// 得到property对应的setter方法
+				Method setter = property.getWriteMethod();
+				setter.invoke(bindObject, value);
+			}
+		}
 	}
 
 	private BeanMap resolveBeanMap(Class<?> classType) {

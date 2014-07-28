@@ -275,5 +275,23 @@ public interface RopRequestContext {
 	 */
 	void setRequestId(String requestId);
 
+	/**
+	 * 获取额外的自定义信息Map
+	 * @return
+	 */
+	Map<String,String> getExtInfoMap();
+
+	/**
+	 * 设置额外的自定义信息Map
+	 * @param extInfoMap
+	 */
+	void setExtInfoMap(Map<String,String> extInfoMap);
+
+	/**
+	 * 获取额外的自定义信息
+	 * @param extKey
+	 * @return
+	 */
+	String getExtInfo(String extKey);
 }
 

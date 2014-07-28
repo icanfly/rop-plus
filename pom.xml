@@ -7,7 +7,7 @@
     <groupId>com.github.rop</groupId>
     <artifactId>rop-parent</artifactId>
     <packaging>pom</packaging>
-    <version>1.0</version>
+    <version>1.1</version>
 
     <name>rop-parent</name>
 

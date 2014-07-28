@@ -89,6 +89,7 @@
             <xsd:attribute name="sign-param-name" type="xsd:string"/>
             <xsd:attribute name="jsonp-param-name" type="xsd:string"/>
             <xsd:attribute name="timestamp-param-name" type="xsd:string"/>
+            <xsd:attribute name="ext-param-name" type="xsd:string"/>
         </xsd:complexType>
     </xsd:element>
 </xsd:schema>

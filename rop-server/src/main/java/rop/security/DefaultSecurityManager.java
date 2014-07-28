@@ -359,10 +359,7 @@ public class DefaultSecurityManager implements SecurityManager {
                     //获取需要签名的参数
                     Set<String> ignoreSignFieldNames = ctx.getServiceMethodHandler().getIgnoreSignFieldNames();
                     HashMap<String, String> needSignParams = new HashMap<String, String>();
-					Map<String,String> map = new HashMap<String,String>();
-					map.putAll(ctx.getRequestHeaderMap());
-					map.putAll(ctx.getRequestBodyMap());
-                    for (Map.Entry<String, String> entry : map.entrySet()) {
+                    for (Map.Entry<String, String> entry : ctx.getRequestBodyMap().entrySet()) {
                         if (!ignoreSignFieldNames.contains(entry.getKey())) {
                             needSignParams.put(entry.getKey(), entry.getValue());
                         }
@@ -382,7 +379,7 @@ public class DefaultSecurityManager implements SecurityManager {
 
 					String signSecret = appkeyResult.getData();
 
-                    String signValue = RopUtils.sign(needSignParams, signSecret);
+                    String signValue = RopUtils.sign(needSignParams,ctx.getRequestHeaderMap(),ctx.getExtInfoMap(), signSecret);
                     if (!signValue.equals(ctx.getSign())) {
                         if (logger.isErrorEnabled()) {
                             logger.error(ctx.getAppKey() + "的签名不合法，请检查");

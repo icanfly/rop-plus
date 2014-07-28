@@ -28,6 +28,7 @@ public class SystemParameterNamesBeanDefinitionParser implements BeanDefinitionP
         String sign = element.getAttribute("sign-param-name");
         String jsonp = element.getAttribute("jsonp-param-name");
 		String timestamp = element.getAttribute("timestamp-param-name");
+		String ext = element.getAttribute("ext-param-name");
 
         if (StringUtils.hasText(appKey)) {
             SystemParameterNames.setAppKey(appKey);
@@ -56,8 +57,9 @@ public class SystemParameterNamesBeanDefinitionParser implements BeanDefinitionP
 		if(StringUtils.hasText(timestamp)){
 			SystemParameterNames.setTimestamp(timestamp);
 		}
-
-
+		if(StringUtils.hasText(ext)){
+			SystemParameterNames.setExtInfo(ext);
+		}
         return null;
     }
 }

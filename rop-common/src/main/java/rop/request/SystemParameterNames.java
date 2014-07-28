@@ -6,6 +6,7 @@ package rop.request;
  * </pre>
  *
  * @author 陈雄华
+ * @author luopeng
  * @version 1.0
  */
 public class SystemParameterNames {
@@ -24,7 +25,7 @@ public class SystemParameterNames {
     //会话id默认参数名
     private static final String SESSION_ID = "sessionId";
 
-    //应用键的默认参数名        ;
+    //应用键的默认参数名
     private static final String APP_KEY = "appKey";
 
     //服务版本号的默认参数名
@@ -37,6 +38,11 @@ public class SystemParameterNames {
 	 * 请求时间戳
 	 */
 	private static final String TIMESTAMP = "ts";
+
+	/**
+	 * 额外的扩展信息，传输时额外的扩展信息按照一定格式组装成字串
+	 */
+	private static final String EXT_INFO = "ext";
 
     private static String method = METHOD;
 
@@ -55,7 +61,17 @@ public class SystemParameterNames {
 
 	private static String timestamp = TIMESTAMP;
 
-    public static String getMethod() {
+	private static String extInfo = EXT_INFO;
+
+	public static String getExtInfo() {
+		return extInfo;
+	}
+
+	public static void setExtInfo(String extInfo) {
+		SystemParameterNames.extInfo = extInfo;
+	}
+
+	public static String getMethod() {
         return method;
     }
 

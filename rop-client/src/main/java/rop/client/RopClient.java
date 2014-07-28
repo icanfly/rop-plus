@@ -2,6 +2,8 @@ package rop.client;
 
 import rop.converter.RopConverter;
 
+import java.util.Map;
+
 /**
  * RopClient 抽象
  * @author 陈雄华
@@ -84,6 +86,12 @@ public interface RopClient {
 	 * @param timestampParamName
 	 */
 	void setTimestampParamName(String timestampParamName);
+
+	/**
+	 * 获取扩展信息Map
+	 * @return
+	 */
+	Map<String,String> getExtInfoMap();
 
     /**
      * 创建一个新的服务请求

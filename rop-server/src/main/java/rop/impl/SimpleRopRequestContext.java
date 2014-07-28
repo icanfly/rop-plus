@@ -1,6 +1,7 @@
 package rop.impl;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import org.apache.commons.fileupload.FileItem;
 import rop.*;
 import rop.annotation.HttpAction;
@@ -86,6 +87,16 @@ public class SimpleRopRequestContext implements RopRequestContext {
 	 * 文件上传Item
 	 */
 	private List<FileItem> fileItems = Lists.newLinkedList();
+
+	/**
+	 * 调用者版本信息
+	 */
+	private String invokerVersion;
+
+	/**
+	 * 自定义扩展Map
+	 */
+	private Map<String,String> extInfoMap;
 
 	@Override
 	public long getServiceBeginTime() {
@@ -338,6 +349,24 @@ public class SimpleRopRequestContext implements RopRequestContext {
 
 	public void setRequestId(String requestId) {
 		this.requestId = requestId;
+	}
+
+	@Override
+	public Map<String, String> getExtInfoMap() {
+		return this.extInfoMap;
+	}
+
+	@Override
+	public void setExtInfoMap(Map<String, String> extInfoMap) {
+		this.extInfoMap = extInfoMap;
+	}
+
+	@Override
+	public String getExtInfo(String extKey) {
+		if(extInfoMap != null){
+			return extInfoMap.get(extKey);
+		}
+		return null;
 	}
 
 	@Override

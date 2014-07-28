@@ -112,6 +112,9 @@ public class ServletRequestContextBuilder implements RequestContextBuilder {
 		String timestamp = servletRequest.getHeader(SystemParameterNames.getTimestamp());
 		String format = servletRequest.getHeader(SystemParameterNames.getFormat());
 		String locale = servletRequest.getHeader(SystemParameterNames.getLocale());
+		Map<String,String> extInfoMap = resolveExt(servletRequest,requestContext);
+
+		requestContext.setExtInfoMap(extInfoMap);
 
 		Map<String, String> headerMap = new HashMap<String, String>();
 
@@ -146,6 +149,11 @@ public class ServletRequestContextBuilder implements RequestContextBuilder {
 
 		requestContext.setRequestHeaderMap(headerMap);
 
+	}
+
+	private Map<String, String> resolveExt(HttpServletRequest servletRequest, SimpleRopRequestContext requestContext) {
+		String extInfoStr = getExtInfo(servletRequest);
+		return RopUtils.decryptExtInfo(extInfoStr);
 	}
 
 	private boolean isMultipartRequest(HttpServletRequest servletRequest) {
@@ -268,6 +276,10 @@ public class ServletRequestContextBuilder implements RequestContextBuilder {
 
 	public static String getVersion(HttpServletRequest request){
 		return getHeader(request,SystemParameterNames.getVersion());
+	}
+
+	public static String getExtInfo(HttpServletRequest request){
+		return getHeader(request,SystemParameterNames.getExtInfo());
 	}
 
 	public static Locale getLocale(HttpServletRequest webRequest) {

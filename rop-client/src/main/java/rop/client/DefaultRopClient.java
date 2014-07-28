@@ -47,6 +47,8 @@ public class DefaultRopClient implements RopClient {
 
 	private Locale locale = Locale.SIMPLIFIED_CHINESE;
 
+	private Map<String,String> extInfoMap = Maps.newHashMapWithExpectedSize(2);
+
 	private RopUnmarshaller xmlUnmarshaller = new XStreamXmlRopUnMarshaller();
 
 	private RopUnmarshaller jsonUnmarshaller = new FastjsonRopUnmarshaller();
@@ -108,6 +110,11 @@ public class DefaultRopClient implements RopClient {
 			return this;
 		}
 
+		public Builder withExtInfo(String extKey,String extValue){
+			ropClient.extInfoMap.put(extKey,extValue);
+			return this;
+		}
+
 		public DefaultRopClient build(){
 			if(StringUtils.isBlank(ropClient.serverUrl)){
 				throw new RuntimeException("server url can not be null");
@@ -148,6 +155,11 @@ public class DefaultRopClient implements RopClient {
 	@Override
 	public void setTimestampParamName(String timestampParamName) {
 		SystemParameterNames.setTimestamp(timestampParamName);
+	}
+
+	@Override
+	public Map<String, String> getExtInfoMap() {
+		return this.extInfoMap;
 	}
 
 	@Override
@@ -215,6 +227,8 @@ public class DefaultRopClient implements RopClient {
 
 		private Map<String, String> headerParamMap = new HashMap<String, String>(20);
 
+		private Map<String, String> extInfoMap = new HashMap<String,String>(2);
+
 		private Map<String, String> bodyParamMap = new HashMap<String, String>(4);
 
 		private Set<String> ignoreSignParams = new HashSet<>();
@@ -229,6 +243,9 @@ public class DefaultRopClient implements RopClient {
 			if (sessionId != null) {
 				headerParamMap.put(SystemParameterNames.getSessionId(), sessionId);
 			}
+
+			extInfoMap = ropClient.getExtInfoMap();
+
 		}
 
 		@Override
@@ -253,6 +270,7 @@ public class DefaultRopClient implements RopClient {
 		public ClientRequest clearAllParam() {
 			headerParamMap.clear();
 			bodyParamMap.clear();
+			extInfoMap.clear();
 			return this;
 		}
 
@@ -435,13 +453,9 @@ public class DefaultRopClient implements RopClient {
 				bodyParamMap.putAll(getParamFields(serviceRequest));
 			}
 
-			Map<String, String> allParamMap = new HashMap<String, String>();
-			allParamMap.putAll(headerParamMap);
-			allParamMap.putAll(bodyParamMap);
-
 			//对请求进行签名
 			Class<? extends ServiceRequest> payloadClass = (serviceRequest == null ? null : serviceRequest.getClass());
-			String signValue = sign(payloadClass, appSecret, allParamMap);
+			String signValue = sign(payloadClass, appSecret, bodyParamMap,headerParamMap,extInfoMap);
 			headerParamMap.put(SystemParameterNames.getSign(), signValue);
 		}
 
@@ -453,13 +467,12 @@ public class DefaultRopClient implements RopClient {
 		 * @param form
 		 * @return
 		 */
-		private String sign(Class<?> ropRequestClass, String appSecret, Map<String, String> form) {
+		private String sign(Class<?> ropRequestClass, String appSecret, Map<String, String> form,Map<String,String> headerMap,Map<String,String> extInfo) {
 			Set<String> ignoreFieldNames = requestIgnoreSignFieldNames.get(ropRequestClass);
 			if (ignoreFieldNames != null) {
 				ignoreSignParams.addAll(ignoreFieldNames);
 			}
-
-			return RopUtils.sign(form, ignoreSignParams, appSecret);
+			return RopUtils.sign(form, ignoreSignParams,headerMap,extInfo, appSecret);
 		}
 
 		/**

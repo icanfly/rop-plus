@@ -55,7 +55,7 @@ public class RopUtils {
 			//密钥
 			String contactStr = secret;
 			//参数内容
-			contactStr = contactValues(paramValues,ignoreParamNames);
+			contactStr += contactValues(paramValues,ignoreParamNames);
 			//Header
 			contactStr += contactValues(headerMap,null);
 			//自定义扩展

@@ -10,6 +10,7 @@ import rop.error.MainErrors;
 import rop.error.SubErrors;
 import rop.impl.DefaultServiceAccessController;
 import rop.impl.SimpleRopRequestContext;
+import rop.request.SystemParameterNames;
 import rop.request.UploadFileUtils;
 import rop.session.SessionManager;
 import rop.utils.RopUtils;
@@ -378,8 +379,11 @@ public class DefaultSecurityManager implements SecurityManager {
 					}
 
 					String signSecret = appkeyResult.getData();
+					Map<String,String> headerMap = new HashMap<String,String>(ctx.getRequestHeaderMap());
+					headerMap.remove(SystemParameterNames.getSign());
 
-                    String signValue = RopUtils.sign(needSignParams,ctx.getRequestHeaderMap(),ctx.getExtInfoMap(), signSecret);
+
+                    String signValue = RopUtils.sign(needSignParams,headerMap,ctx.getExtInfoMap(), signSecret);
                     if (!signValue.equals(ctx.getSign())) {
                         if (logger.isErrorEnabled()) {
                             logger.error(ctx.getAppKey() + "的签名不合法，请检查");

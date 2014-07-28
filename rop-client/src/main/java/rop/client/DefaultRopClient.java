@@ -333,6 +333,11 @@ public class DefaultRopClient implements RopClient {
 			headers.put(SystemParameterNames.getMethod(), headerParamMap.get(SystemParameterNames.getMethod()));
 			headers.put(SystemParameterNames.getVersion(), headerParamMap.get(SystemParameterNames.getVersion()));
 
+			//设置扩展信息
+			if(extInfoMap != null && !extInfoMap.isEmpty()){
+				headers.put(SystemParameterNames.getExtInfo(),RopUtils.encryptExtInfo(extInfoMap));
+			}
+
 			return headers;
 		}
 

@@ -1,6 +1,7 @@
 
 package rop.impl;
 
+import com.alibaba.fastjson.JSON;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.commons.fileupload.FileItem;
@@ -13,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.http.MediaType;
 import org.springframework.util.ClassUtils;
+import org.springframework.util.ReflectionUtils;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.ObjectError;
@@ -20,12 +22,15 @@ import org.springframework.validation.SmartValidator;
 import rop.*;
 import rop.annotation.HttpAction;
 import rop.annotation.ParamValid;
+import rop.converter.Complex;
 import rop.converter.ConverterContainer;
 import rop.converter.RopConverter;
+import rop.converter.Style;
 import rop.request.ServiceRequest;
 import rop.request.SystemParameterNames;
 import rop.session.SessionManager;
 import rop.utils.RopUtils;
+import rop.utils.spring.AnnotationUtils;
 
 import javax.servlet.http.HttpServletRequest;
 import java.beans.BeanInfo;
@@ -34,6 +39,7 @@ import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.io.UnsupportedEncodingException;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
@@ -325,35 +331,25 @@ public class ServletRequestContextBuilder implements RequestContextBuilder {
 
 	private BindingResult doBind(HttpServletRequest webRequest, final RopRequestContext ropRequestContext, Class<?> classType, int index) {
 
-		Map<String, String> requestBodyMap = ropRequestContext.getRequestBodyMap();
+		final Map<String, String> requestBodyMap = ropRequestContext.getRequestBodyMap();
 
-		Map<String, Object> newRequestBodyMap = Maps.newHashMap();
+		final Map<String, Object> newRequestBodyMap = Maps.newHashMap();
 		for (Map.Entry<String, String> entry : requestBodyMap.entrySet()) {
 			newRequestBodyMap.put(entry.getKey(), entry.getValue());
 		}
 
-		BeanInfo bindObjectInfo = null;
-		try {
-			bindObjectInfo = Introspector.getBeanInfo(classType);
-		} catch (IntrospectionException e) {
-			throw new RopException("doBind error", e);
-		}
-		PropertyDescriptor[] propertyDescriptors = bindObjectInfo.getPropertyDescriptors();
-
-		if (isMultipartRequest(webRequest)) {
-			//处理multipart
-			//modify by luopeng 2014.06.20
-
-			for (PropertyDescriptor propertyDescriptor : propertyDescriptors) {
-				String propertyName = propertyDescriptor.getName();
-				Class<?> propertyType = propertyDescriptor.getPropertyType();
-				if (converterContainer.support(propertyType) && requestBodyMap.containsKey(propertyName)) {
-					RopConverter converter = converterContainer.getConverter(propertyType);
-					newRequestBodyMap.put(propertyName, converter.convertToObject(requestBodyMap.get(propertyName)));
+		//处理转换
+		ReflectionUtils.doWithFields(classType,new ReflectionUtils.FieldCallback() {
+			@Override
+			public void doWith(Field field) throws IllegalArgumentException, IllegalAccessException {
+				if (converterContainer.support(field.getType()) && requestBodyMap.containsKey(field.getName())) {
+					RopConverter converter = converterContainer.getConverter(field.getType());
+					newRequestBodyMap.put(field.getName(), converter.convertToObject(requestBodyMap.get(field.getName())));
+				}else if(Style.JSON.equals(getStyle(field))){
+					newRequestBodyMap.put(field.getName(), JSON.parseObject(requestBodyMap.get(field.getName()),field.getType()));
 				}
 			}
-
-		}
+		});
 
 		//作转换,效率可能存在一定问题
 		final Object bindObject = BeanUtils.instantiateClass(classType);
@@ -383,6 +379,14 @@ public class ServletRequestContextBuilder implements RequestContextBuilder {
 
 		return bindingResult;
 
+	}
+
+	private Style getStyle(Field field){
+		Complex complex = AnnotationUtils.getAnnotation(field, Complex.class);
+		if(complex != null){
+			return complex.style();
+		}
+		return null;
 	}
 
 	public void setValidator(SmartValidator validator) {

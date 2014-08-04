@@ -1,5 +1,7 @@
 package rop.client;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.google.common.collect.Maps;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.client.config.RequestConfig;
@@ -10,7 +12,9 @@ import rop.annotation.IgnoreSign;
 import rop.annotation.Temporary;
 import rop.client.unmarshaller.FastjsonRopUnmarshaller;
 import rop.client.unmarshaller.XStreamXmlRopUnMarshaller;
+import rop.converter.Complex;
 import rop.converter.RopConverter;
+import rop.converter.Style;
 import rop.request.*;
 import rop.utils.RopUtils;
 import rop.utils.spring.AnnotationUtils;
@@ -24,7 +28,8 @@ import java.lang.reflect.Field;
 import java.util.*;
 
 /**
- *  默认RopClient实现
+ * 默认RopClient实现
+ *
  * @author 陈雄华
  * @author luopeng
  */
@@ -43,11 +48,13 @@ public class DefaultRopClient implements RopClient {
 
 	private String sessionId;
 
+	private boolean needSign = true;
+
 	private MessageFormat messageFormat = MessageFormat.json;
 
 	private Locale locale = Locale.SIMPLIFIED_CHINESE;
 
-	private Map<String,String> extInfoMap = Maps.newHashMapWithExpectedSize(2);
+	private Map<String, String> extInfoMap = Maps.newHashMapWithExpectedSize(2);
 
 	private RopUnmarshaller xmlUnmarshaller = new XStreamXmlRopUnMarshaller();
 
@@ -76,53 +83,58 @@ public class DefaultRopClient implements RopClient {
 
 		private DefaultRopClient ropClient;
 
-		public Builder(){
+		public Builder() {
 			ropClient = new DefaultRopClient();
 		}
 
-		public Builder withAppkey(String appkey){
+		public Builder withAppkey(String appkey) {
 			ropClient.appKey = appkey;
 			return this;
 		}
 
-		public Builder withAppSecret(String appSecret){
+		public Builder withAppSecret(String appSecret) {
 			ropClient.appSecret = appSecret;
 			return this;
 		}
 
-		public Builder withServerUrl(String serverUrl){
+		public Builder withServerUrl(String serverUrl) {
 			ropClient.serverUrl = serverUrl;
 			return this;
 		}
 
-		public Builder withMessageFormat(MessageFormat messageFormat){
+		public Builder withMessageFormat(MessageFormat messageFormat) {
 			ropClient.messageFormat = messageFormat;
 			return this;
 		}
 
-		public Builder withLocale(Locale locale){
+		public Builder withLocale(Locale locale) {
 			ropClient.locale = locale;
 			return this;
 		}
 
-		public Builder withRequestConfig(RequestConfig requestConfig){
+		public Builder withRequestConfig(RequestConfig requestConfig) {
 			ropClient.httpWorker = HttpWorker.create(requestConfig);
 			return this;
 		}
 
-		public Builder withExtInfo(String extKey,String extValue){
-			ropClient.extInfoMap.put(extKey,extValue);
+		public Builder withExtInfo(String extKey, String extValue) {
+			ropClient.extInfoMap.put(extKey, extValue);
 			return this;
 		}
 
-		public DefaultRopClient build(){
-			if(StringUtils.isBlank(ropClient.serverUrl)){
+		public Builder withSignSwitch(boolean signSwitch) {
+			ropClient.needSign = signSwitch;
+			return this;
+		}
+
+		public DefaultRopClient build() {
+			if (StringUtils.isBlank(ropClient.serverUrl)) {
 				throw new RuntimeException("server url can not be null");
-			}else if(StringUtils.isBlank(ropClient.appKey)){
+			} else if (StringUtils.isBlank(ropClient.appKey)) {
 				throw new RuntimeException("appKey can not be null");
-			}else if(StringUtils.isBlank(ropClient.appSecret)){
+			} else if (ropClient.needSign && StringUtils.isBlank(ropClient.appSecret)) {
 				throw new RuntimeException("appSecret can not be null");
-			}else if(ropClient.httpWorker == null){
+			} else if (ropClient.httpWorker == null) {
 				throw new RuntimeException("requestConfig can not be null");
 			}
 			return ropClient;
@@ -216,9 +228,14 @@ public class DefaultRopClient implements RopClient {
 
 	@Override
 	public void destroy() {
-		if(httpWorker != null){
+		if (httpWorker != null) {
 			httpWorker.stop();
 		}
+	}
+
+	@Override
+	public void enableSign(boolean needSign) {
+		this.needSign = needSign;
 	}
 
 	private class DefaultClientRequest implements ClientRequest {
@@ -227,7 +244,7 @@ public class DefaultRopClient implements RopClient {
 
 		private Map<String, String> headerParamMap = new HashMap<String, String>(20);
 
-		private Map<String, String> extInfoMap = new HashMap<String,String>(2);
+		private Map<String, String> extInfoMap = new HashMap<String, String>(2);
 
 		private Map<String, String> bodyParamMap = new HashMap<String, String>(4);
 
@@ -306,9 +323,9 @@ public class DefaultRopClient implements RopClient {
 			Map<String, String> headers = resolveHeaders();
 			String responseStr = null;
 			try {
-				responseStr = httpWorker.post(serverUrl, headers, bodyParamMap,false);
+				responseStr = httpWorker.post(serverUrl, headers, bodyParamMap, false);
 			} catch (IOException e) {
-				throw new RuntimeException("error occur during http request.",e);
+				throw new RuntimeException("error occur during http request.", e);
 			}
 			if (logger.isDebugEnabled()) {
 				logger.debug("response:\n" + responseStr);
@@ -318,7 +335,9 @@ public class DefaultRopClient implements RopClient {
 
 		private Map<String, String> resolveHeaders() {
 			Map<String, String> headers = Maps.newHashMap();
-			headers.put(SystemParameterNames.getSign(), headerParamMap.get(SystemParameterNames.getSign()));
+			if (headerParamMap.get(SystemParameterNames.getSign()) != null) {
+				headers.put(SystemParameterNames.getSign(), headerParamMap.get(SystemParameterNames.getSign()));
+			}
 			headers.put(SystemParameterNames.getTimestamp(), headerParamMap.get(SystemParameterNames.getTimestamp()));
 			headers.put(SystemParameterNames.getAppKey(), headerParamMap.get(SystemParameterNames.getAppKey()));
 			headers.put(SystemParameterNames.getFormat(), headerParamMap.get(SystemParameterNames.getFormat()));
@@ -334,8 +353,8 @@ public class DefaultRopClient implements RopClient {
 			headers.put(SystemParameterNames.getVersion(), headerParamMap.get(SystemParameterNames.getVersion()));
 
 			//设置扩展信息
-			if(extInfoMap != null && !extInfoMap.isEmpty()){
-				headers.put(SystemParameterNames.getExtInfo(),RopUtils.encryptExtInfo(extInfoMap));
+			if (extInfoMap != null && !extInfoMap.isEmpty()) {
+				headers.put(SystemParameterNames.getExtInfo(), RopUtils.encryptExtInfo(extInfoMap));
 			}
 
 			return headers;
@@ -363,9 +382,9 @@ public class DefaultRopClient implements RopClient {
 
 			String responseStr = null;
 			try {
-				responseStr = httpWorker.post(serverUrl,headers,bodyParamMap,true);
+				responseStr = httpWorker.post(serverUrl, headers, bodyParamMap, true);
 			} catch (IOException e) {
-				throw new RuntimeException("error occur during http request.",e);
+				throw new RuntimeException("error occur during http request.", e);
 			}
 
 			if (logger.isDebugEnabled()) {
@@ -399,7 +418,7 @@ public class DefaultRopClient implements RopClient {
 			try {
 				responseStr = httpWorker.get(buildGetUrl(bodyParamMap), headers);
 			} catch (IOException e) {
-				throw new RuntimeException("error occur during http request.",e);
+				throw new RuntimeException("error occur during http request.", e);
 			}
 
 			if (logger.isDebugEnabled()) {
@@ -459,9 +478,11 @@ public class DefaultRopClient implements RopClient {
 			}
 
 			//对请求进行签名
-			Class<? extends ServiceRequest> payloadClass = (serviceRequest == null ? null : serviceRequest.getClass());
-			String signValue = sign(payloadClass, appSecret, bodyParamMap,headerParamMap,extInfoMap);
-			headerParamMap.put(SystemParameterNames.getSign(), signValue);
+			if (needSign) {
+				Class<? extends ServiceRequest> payloadClass = (serviceRequest == null ? null : serviceRequest.getClass());
+				String signValue = sign(payloadClass, appSecret, bodyParamMap, headerParamMap, extInfoMap);
+				headerParamMap.put(SystemParameterNames.getSign(), signValue);
+			}
 		}
 
 		/**
@@ -472,12 +493,12 @@ public class DefaultRopClient implements RopClient {
 		 * @param form
 		 * @return
 		 */
-		private String sign(Class<?> ropRequestClass, String appSecret, Map<String, String> form,Map<String,String> headerMap,Map<String,String> extInfo) {
+		private String sign(Class<?> ropRequestClass, String appSecret, Map<String, String> form, Map<String, String> headerMap, Map<String, String> extInfo) {
 			Set<String> ignoreFieldNames = requestIgnoreSignFieldNames.get(ropRequestClass);
 			if (ignoreFieldNames != null) {
 				ignoreSignParams.addAll(ignoreFieldNames);
 			}
-			return RopUtils.sign(form, ignoreSignParams,headerMap,extInfo, appSecret);
+			return RopUtils.sign(form, ignoreSignParams, headerMap, extInfo, appSecret);
 		}
 
 		/**
@@ -512,7 +533,12 @@ public class DefaultRopClient implements RopClient {
 						String strParamValue = convertor.convertToString(fieldValue);
 						params.put(field.getName(), strParamValue);
 					} else {
-						params.put(field.getName(), fieldValue.toString());
+						Complex complex = AnnotationUtils.getAnnotation(field, Complex.class);
+						if (complex != null && Style.JSON.equals(complex.style())) {
+							params.put(field.getName(), JSON.toJSONString(fieldValue, SerializerFeature.DisableCircularReferenceDetect));
+						} else {
+							params.put(field.getName(), fieldValue.toString());
+						}
 					}
 				}
 			}

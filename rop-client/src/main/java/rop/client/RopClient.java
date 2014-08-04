@@ -103,5 +103,11 @@ public interface RopClient {
 	 * 销毁退出
 	 */
 	void destroy();
+
+	/**
+	 * 是否启用Sign
+	 */
+	void enableSign(boolean needSign);
+
 }
 

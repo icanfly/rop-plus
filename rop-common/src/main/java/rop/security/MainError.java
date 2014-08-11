@@ -54,6 +54,18 @@ public class MainError implements Serializable {
 		this.subErrors = subErrors;
 	}
 
+	public void setCode(String code) {
+		this.code = code;
+	}
+
+	public void setMessage(String message) {
+		this.message = message;
+	}
+
+	public void setSolution(String solution) {
+		this.solution = solution;
+	}
+
 	public MainError addSubError(SubError subError) {
 		this.subErrors.add(subError);
 		return this;

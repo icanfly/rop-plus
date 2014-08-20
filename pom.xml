@@ -28,7 +28,7 @@
 
     <profiles>
         <profile>
-            <id>local</id>
+            <id>35</id>
             <activation>
                 <activeByDefault>true</activeByDefault>
             </activation>

@@ -1,6 +1,6 @@
 package rop.utils.spring;
 
-import org.apache.commons.lang.StringUtils;
+import rop.thirdparty.org.apache.commons.lang3.StringUtils;
 
 import java.util.Collection;
 import java.util.Map;

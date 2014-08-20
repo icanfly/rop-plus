@@ -1,9 +1,6 @@
 
 package rop.impl;
 
-import com.alibaba.fastjson.JSON;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileUploadException;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
@@ -19,6 +16,7 @@ import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.ObjectError;
 import org.springframework.validation.SmartValidator;
+
 import rop.*;
 import rop.annotation.HttpAction;
 import rop.annotation.ParamValid;
@@ -29,14 +27,12 @@ import rop.converter.Style;
 import rop.request.ServiceRequest;
 import rop.request.SystemParameterNames;
 import rop.session.SessionManager;
+import rop.thirdparty.com.alibaba.fastjson.JSON;
 import rop.utils.RopUtils;
 import rop.utils.spring.AnnotationUtils;
 
 import javax.servlet.http.HttpServletRequest;
-import java.beans.BeanInfo;
-import java.beans.IntrospectionException;
-import java.beans.Introspector;
-import java.beans.PropertyDescriptor;
+
 import java.io.UnsupportedEncodingException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -144,17 +140,19 @@ public class ServletRequestContextBuilder implements RequestContextBuilder {
 		headerMap.put(SystemParameterNames.getTimestamp(), timestamp);
 		requestContext.setTimestamp(getTimestamp(servletRequest));
 
-		headerMap.put(SystemParameterNames.getFormat(), format);
-		requestContext.setFormat(getFormat(servletRequest));
+		if(format != null){
+			headerMap.put(SystemParameterNames.getFormat(), format);
+			requestContext.setFormat(format);
+		}
 
-		headerMap.put(SystemParameterNames.getLocale(), locale);
-		requestContext.setLocale(getLocale(servletRequest));
+		if(locale != null){
+			headerMap.put(SystemParameterNames.getLocale(), locale);
+			requestContext.setLocale(getLocale(servletRequest));
+		}
 
-		requestContext.setMessageFormat(getResponseFormat(servletRequest));
 		requestContext.setHttpAction(HttpAction.fromValue(servletRequest.getMethod()));
 
 		requestContext.setRequestHeaderMap(headerMap);
-
 	}
 
 	private Map<String, String> resolveExt(HttpServletRequest servletRequest, SimpleRopRequestContext requestContext) {
@@ -222,7 +220,7 @@ public class ServletRequestContextBuilder implements RequestContextBuilder {
 
 		Class<?>[] paramTypes = ropRequestContext.getServiceMethodHandler().getMethodParameterTypes();
 		Object[] params = new Object[paramTypes.length];
-		List<ObjectError> allErrors = Lists.newLinkedList();
+		List<ObjectError> allErrors = new LinkedList<ObjectError>();
 		for (int i = 0; i < paramTypes.length; ++i) {
 			Class<?> paramType = paramTypes[i];
 			if (ClassUtils.isAssignable(RopRequestContext.class, paramType)) {
@@ -239,20 +237,6 @@ public class ServletRequestContextBuilder implements RequestContextBuilder {
 		}
 		ropRequestContext.setAttribute(SimpleRopRequestContext.SPRING_VALIDATE_ERROR_ATTRNAME, allErrors);
 		ropRequestContext.setServiceMethodParameters(params);
-	}
-
-
-	private String getFormat(HttpServletRequest servletRequest) {
-		String messageFormat = servletRequest.getHeader(SystemParameterNames.getFormat());
-		return getFormat(messageFormat);
-	}
-
-	private String getFormat(String format) {
-		if (format == null) {
-			return MessageFormat.xml.name();
-		} else {
-			return format;
-		}
 	}
 
 	private long getTimestamp(HttpServletRequest servletRequest) {
@@ -299,19 +283,6 @@ public class ServletRequestContextBuilder implements RequestContextBuilder {
 		return Locale.SIMPLIFIED_CHINESE;
 	}
 
-	public static MessageFormat getResponseFormat(HttpServletRequest servletRequest) {
-		String messageFormat = servletRequest.getHeader(SystemParameterNames.getFormat());
-		return getResponseFormat(messageFormat);
-	}
-
-	public static MessageFormat getResponseFormat(String format) {
-		if (MessageFormat.isValidFormat(format)) {
-			return MessageFormat.getFormat(format);
-		} else {
-			return MessageFormat.xml;
-		}
-	}
-
 	private HashMap<String, String> getRequestParams(HttpServletRequest request) {
 		Map srcParamMap = request.getParameterMap();
 		HashMap<String, String> destParamMap = new HashMap<String, String>(srcParamMap.size());
@@ -333,7 +304,7 @@ public class ServletRequestContextBuilder implements RequestContextBuilder {
 
 		final Map<String, String> requestBodyMap = ropRequestContext.getRequestBodyMap();
 
-		final Map<String, Object> newRequestBodyMap = Maps.newHashMap();
+		final Map<String, Object> newRequestBodyMap = new HashMap<String, Object>();
 		for (Map.Entry<String, String> entry : requestBodyMap.entrySet()) {
 			newRequestBodyMap.put(entry.getKey(), entry.getValue());
 		}

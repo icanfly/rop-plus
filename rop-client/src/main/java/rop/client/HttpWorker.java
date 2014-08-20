@@ -1,29 +1,11 @@
 package rop.client;
 
-import com.google.common.collect.Lists;
-import org.apache.commons.io.IOUtils;
-import org.apache.http.HttpStatus;
-import org.apache.http.NameValuePair;
-import org.apache.http.StatusLine;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.mime.HttpMultipartMode;
-import org.apache.http.entity.mime.MultipartEntityBuilder;
-import org.apache.http.entity.mime.content.StringBody;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.util.EntityUtils;
+import rop.http.HttpRequest;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.List;
+import java.net.HttpURLConnection;
+import java.net.Proxy;
+import java.net.URL;
 import java.util.Map;
 
 /**
@@ -34,105 +16,102 @@ import java.util.Map;
  */
 public class HttpWorker {
 
-	private RequestConfig requestConfig;
+	private static volatile HttpWorker instance;
 
-	private final static Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
+	private HttpWorker() {
 
-	private CloseableHttpClient client;
-
-	private HttpWorker(){
-		PoolingHttpClientConnectionManager cm = new PoolingHttpClientConnectionManager();
-		cm.setMaxTotal(10000);//连接池最大并发连接数
-		cm.setDefaultMaxPerRoute(1000);//单路由最大并发数
-		client = HttpClientBuilder.create().setConnectionManager(cm).build();
 	}
 
-	public static HttpWorker create(RequestConfig requestConfig){
-		HttpWorker worker = new HttpWorker();
-		worker.requestConfig = requestConfig;
-		return worker;
-	}
-
-	private CloseableHttpClient getHttpClient() {
-		return client;
-	}
-
-	public void stop(){
-		if(client != null){
-			IOUtils.closeQuietly(client);
+	public static HttpWorker getInstance() {
+		if (instance == null) {
+			synchronized (HttpWorker.class) {
+				if (instance == null) {
+					instance = new HttpWorker();
+				}
+			}
 		}
+		return instance;
+
+
+	}
+
+
+	public String get(String url, Map<String, String> headers,int connTimeout,int readTimeout) throws IOException {
+		return _innerGet(url,headers,new TimedConnectionFactory(connTimeout,readTimeout));
+
 	}
 
 	public String get(String url, Map<String, String> headers) throws IOException {
-		HttpGet get = new HttpGet(url);
-		get.setConfig(requestConfig);
-		setHeaders(get, headers);
-		CloseableHttpResponse response = null;
-		String responseStr = null;
-		try{
-			response = getHttpClient().execute(get);
-			checkOK(response);
-			responseStr  =  EntityUtils.toString(response.getEntity());
-		}finally {
-			if(response != null){
-				IOUtils.closeQuietly(response);
-			}
-		}
+		return _innerGet(url,headers,new TimedConnectionFactory());
+	}
 
-		return responseStr;
+	private String _innerGet(String url, Map<String, String> headers,HttpRequest.ConnectionFactory connectionFactory){
+		HttpRequest request = new HttpRequest(url, HttpRequest.METHOD_GET);
+		request.headers(headers);
+		request.setInstanceConnectionFactory(connectionFactory);
+
+		checkOK(request);
+		return request.body(HttpRequest.CHARSET_UTF8);
 	}
 
 	public String post(String url, Map<String, String> headers, Map<String, String> body, boolean multipart) throws IOException {
-		HttpPost post = new HttpPost(url);
-		post.setConfig(requestConfig);
-		setHeaders(post, headers);
+		return _innerPost(url,headers,body,multipart,new TimedConnectionFactory());
+	}
+
+	public String post(String url, Map<String, String> headers, Map<String, String> body, boolean multipart,
+					   int connTimeout,int readTimeout) throws IOException {
+		return _innerPost(url,headers,body,multipart,new TimedConnectionFactory(connTimeout,readTimeout));
+	}
+
+	private String _innerPost(String url, Map<String, String> headers, Map<String, String> body, boolean multipart,
+							  HttpRequest.ConnectionFactory connectionFactory){
+		HttpRequest request = new HttpRequest(url, HttpRequest.METHOD_POST);
+		request.setInstanceConnectionFactory(connectionFactory);
+		request.headers(headers);
 		if (body != null) {
 			if (multipart) {
-				MultipartEntityBuilder builder = MultipartEntityBuilder.create().setMode(HttpMultipartMode.BROWSER_COMPATIBLE).setCharset(DEFAULT_CHARSET);
 				for (Map.Entry<String, String> entry : body.entrySet()) {
-					StringBody entity = new StringBody(entry.getValue(),ContentType.create(ContentType.MULTIPART_FORM_DATA.getMimeType(),	DEFAULT_CHARSET));
-					builder.addPart(entry.getKey(), entity);
+					request.part(entry.getKey(), entry.getValue());
 				}
-				post.setEntity(builder.build());
 			} else {
-				UrlEncodedFormEntity encodedFormEntity = new UrlEncodedFormEntity(toNameValuePairList(body), DEFAULT_CHARSET);
-				post.setEntity(encodedFormEntity);
+				request.form(body);
 			}
 		}
-		CloseableHttpResponse response = null;
-		String responseStr = null;
-		try{
-			response = getHttpClient().execute(post);
-			checkOK(response);
-			responseStr = EntityUtils.toString(response.getEntity());
-		}finally {
-			if(response != null){
-				IOUtils.closeQuietly(response);
-			}
-		}
-		return responseStr;
+
+		checkOK(request);
+		return request.body(HttpRequest.CHARSET_UTF8);
 	}
 
-	private static List<? extends NameValuePair> toNameValuePairList(Map<String, String> body) {
-        List<NameValuePair> retList = Lists.newLinkedList();
-		for (Map.Entry<String, String> entry : body.entrySet()) {
-			retList.add(new BasicNameValuePair(entry.getKey(),entry.getValue()));
-		}
-		return retList;
-	}
-
-	private void setHeaders(HttpRequestBase request, Map<String, String> headers) {
-		if (headers != null) {
-			for (Map.Entry<String, String> header : headers.entrySet()) {
-				request.addHeader(header.getKey(), header.getValue());
-			}
+	private void checkOK(HttpRequest request) {
+		if (!request.ok()) {
+			throw new RuntimeException("error status code:" + request.code() + ",detail message:" + request.message());
 		}
 	}
 
-	private void checkOK(CloseableHttpResponse response) {
-		StatusLine statusLine = response.getStatusLine();
-		if (statusLine.getStatusCode() != HttpStatus.SC_OK) {
-			throw new RuntimeException("error status code:" + statusLine.getStatusCode() + ",detail message:"+statusLine.getReasonPhrase());
+	private static class TimedConnectionFactory implements HttpRequest.ConnectionFactory{
+		private int connTimeout = 30000;
+		private int readTimeout = 60000;
+
+		public TimedConnectionFactory(){
+
+		}
+
+		public TimedConnectionFactory(int connTimeout,int readTimeout){
+			this.connTimeout = connTimeout;
+			this.readTimeout = readTimeout;
+		}
+
+		@Override
+		public HttpURLConnection create(URL url) throws IOException {
+			HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+			connection.setConnectTimeout(connTimeout);
+			connection.setReadTimeout(readTimeout);
+			return connection;
+		}
+
+		@Override
+		public HttpURLConnection create(URL url, Proxy proxy) throws IOException {
+			throw new RuntimeException("not supported.");
 		}
 	}
 

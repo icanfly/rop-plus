@@ -1,21 +1,19 @@
 package rop.client;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.serializer.SerializerFeature;
-import com.google.common.collect.Maps;
-import org.apache.commons.lang.StringUtils;
-import org.apache.http.client.config.RequestConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import rop.MessageFormat;
+
+import rop.RopUnmarshaller;
 import rop.annotation.IgnoreSign;
 import rop.annotation.Temporary;
-import rop.client.unmarshaller.FastjsonRopUnmarshaller;
-import rop.client.unmarshaller.XStreamXmlRopUnMarshaller;
 import rop.converter.Complex;
 import rop.converter.RopConverter;
 import rop.converter.Style;
+import rop.json.FastjsonRopUnmarshaller;
 import rop.request.*;
+import rop.thirdparty.com.alibaba.fastjson.JSON;
+import rop.thirdparty.com.alibaba.fastjson.serializer.SerializerFeature;
+import rop.thirdparty.org.apache.commons.lang3.StringUtils;
 import rop.utils.RopUtils;
 import rop.utils.spring.AnnotationUtils;
 import rop.utils.spring.Assert;
@@ -35,9 +33,6 @@ import java.util.*;
  */
 public class DefaultRopClient implements RopClient {
 
-	public final static String APPLICATION_FORM_URLENCODED_VALUE = "application/x-www-form-urlencoded";
-	public final static String MULTIPART_FORM_DATA_VALUE = "multipart/form-data";
-
 	protected final Logger logger = LoggerFactory.getLogger(getClass());
 
 	private String serverUrl;
@@ -50,19 +45,11 @@ public class DefaultRopClient implements RopClient {
 
 	private boolean needSign = true;
 
-	private MessageFormat messageFormat = MessageFormat.json;
-
 	private Locale locale = Locale.SIMPLIFIED_CHINESE;
 
-	private Map<String, String> extInfoMap = Maps.newHashMapWithExpectedSize(2);
+	private Map<String, String> extInfoMap = new HashMap<String,String>(2);
 
-	private RopUnmarshaller xmlUnmarshaller = new XStreamXmlRopUnMarshaller();
-
-	private RopUnmarshaller jsonUnmarshaller = new FastjsonRopUnmarshaller();
-
-	private HttpWorker httpWorker;
-	private static final RequestConfig defaultRequestConfig = RequestConfig.custom().setConnectionRequestTimeout(60000).setConnectTimeout
-			(60000).setSocketTimeout(60000).build();
+	private RopUnmarshaller ropUnmarshaller = new FastjsonRopUnmarshaller();
 
 	//请求类所有请求参数
 	private Map<Class<?>, List<Field>> requestAllFields = new HashMap<Class<?>, List<Field>>();
@@ -102,18 +89,8 @@ public class DefaultRopClient implements RopClient {
 			return this;
 		}
 
-		public Builder withMessageFormat(MessageFormat messageFormat) {
-			ropClient.messageFormat = messageFormat;
-			return this;
-		}
-
 		public Builder withLocale(Locale locale) {
 			ropClient.locale = locale;
-			return this;
-		}
-
-		public Builder withRequestConfig(RequestConfig requestConfig) {
-			ropClient.httpWorker = HttpWorker.create(requestConfig);
 			return this;
 		}
 
@@ -134,21 +111,10 @@ public class DefaultRopClient implements RopClient {
 				throw new RuntimeException("appKey can not be null");
 			} else if (ropClient.needSign && StringUtils.isBlank(ropClient.appSecret)) {
 				throw new RuntimeException("appSecret can not be null");
-			} else if (ropClient.httpWorker == null) {
-				throw new RuntimeException("requestConfig can not be null");
 			}
 			return ropClient;
 		}
 
-	}
-
-
-	public MessageFormat getMessageFormat() {
-		return messageFormat;
-	}
-
-	public void setMessageFormat(MessageFormat messageFormat) {
-		this.messageFormat = messageFormat;
 	}
 
 	public Locale getLocale() {
@@ -227,10 +193,13 @@ public class DefaultRopClient implements RopClient {
 	}
 
 	@Override
+	public ClientRequest buildClientRequest(int connTimeout,int readTimeout) {
+		return new DefaultClientRequest(this,connTimeout,readTimeout);
+	}
+
+	@Override
 	public void destroy() {
-		if (httpWorker != null) {
-			httpWorker.stop();
-		}
+		//do nothing
 	}
 
 	@Override
@@ -250,11 +219,16 @@ public class DefaultRopClient implements RopClient {
 
 		private Set<String> ignoreSignParams = new HashSet<>();
 
-		private DefaultClientRequest(RopClient ropClient) {
+		private int connTimeout ;
+
+		private int readTimeout ;
+
+		private DefaultClientRequest(RopClient ropClient,int connTimeout,int readTimeout) {
 			this.ropClient = ropClient;
+			this.connTimeout = connTimeout;
+			this.readTimeout = readTimeout;
 
 			headerParamMap.put(SystemParameterNames.getAppKey(), appKey);
-			headerParamMap.put(SystemParameterNames.getFormat(), messageFormat.name());
 			headerParamMap.put(SystemParameterNames.getLocale(), locale.toString());
 			headerParamMap.put(SystemParameterNames.getTimestamp(), String.valueOf(System.currentTimeMillis()));
 			if (sessionId != null) {
@@ -263,6 +237,10 @@ public class DefaultRopClient implements RopClient {
 
 			extInfoMap = ropClient.getExtInfoMap();
 
+		}
+
+		private DefaultClientRequest(RopClient ropClient) {
+			this(ropClient,60000,600000);
 		}
 
 		@Override
@@ -323,7 +301,7 @@ public class DefaultRopClient implements RopClient {
 			Map<String, String> headers = resolveHeaders();
 			String responseStr = null;
 			try {
-				responseStr = httpWorker.post(serverUrl, headers, bodyParamMap, false);
+				responseStr = HttpWorker.getInstance().post(serverUrl, headers, bodyParamMap, false, connTimeout, readTimeout);
 			} catch (IOException e) {
 				throw new RuntimeException("error occur during http request.", e);
 			}
@@ -334,7 +312,7 @@ public class DefaultRopClient implements RopClient {
 		}
 
 		private Map<String, String> resolveHeaders() {
-			Map<String, String> headers = Maps.newHashMap();
+			Map<String, String> headers = new HashMap<String, String>();
 			if (headerParamMap.get(SystemParameterNames.getSign()) != null) {
 				headers.put(SystemParameterNames.getSign(), headerParamMap.get(SystemParameterNames.getSign()));
 			}
@@ -382,7 +360,7 @@ public class DefaultRopClient implements RopClient {
 
 			String responseStr = null;
 			try {
-				responseStr = httpWorker.post(serverUrl, headers, bodyParamMap, true);
+				responseStr = HttpWorker.getInstance().post(serverUrl, headers, bodyParamMap, true, connTimeout, readTimeout);
 			} catch (IOException e) {
 				throw new RuntimeException("error occur during http request.", e);
 			}
@@ -416,7 +394,7 @@ public class DefaultRopClient implements RopClient {
 
 			String responseStr = null;
 			try {
-				responseStr = httpWorker.get(buildGetUrl(bodyParamMap), headers);
+				responseStr = HttpWorker.getInstance().get(buildGetUrl(bodyParamMap), headers, connTimeout, readTimeout);
 			} catch (IOException e) {
 				throw new RuntimeException("error occur during http request.", e);
 			}
@@ -441,14 +419,7 @@ public class DefaultRopClient implements RopClient {
 			if (logger.isDebugEnabled()) {
 				logger.debug(content);
 			}
-			T ropResponse = null;
-
-			if (MessageFormat.json == messageFormat) {
-				ropResponse = jsonUnmarshaller.unmarshaller(content, objectType);
-			} else {
-				ropResponse = xmlUnmarshaller.unmarshaller(content, objectType);
-			}
-			return ropResponse;
+			return ropUnmarshaller.unmarshaller(content, objectType);
 		}
 
 		private String buildGetUrl(Map<String, String> form) {
@@ -592,11 +563,11 @@ public class DefaultRopClient implements RopClient {
 	 * @param mf
 	 * @return
 	 */
-	private Map<String, String> getParamFields(ServiceRequest serviceRequest, MessageFormat mf) {
+	private Map<String, String> getParamFields(ServiceRequest serviceRequest) {
 		if (!requestAllFields.containsKey(serviceRequest.getClass())) {
 			parseRopRequestClass(serviceRequest);
 		}
-		return toParamValueMap(serviceRequest, mf);
+		return toParamValueMap(serviceRequest);
 	}
 
 	/**
@@ -606,7 +577,7 @@ public class DefaultRopClient implements RopClient {
 	 * @param mf
 	 * @return
 	 */
-	private Map<String, String> toParamValueMap(ServiceRequest serviceRequest, MessageFormat mf) {
+	private Map<String, String> toParamValueMap(ServiceRequest serviceRequest) {
 		List<Field> fields = requestAllFields.get(serviceRequest.getClass());
 		Map<String, String> params = new HashMap<String, String>();
 		for (Field field : fields) {

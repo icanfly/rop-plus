@@ -1,7 +1,7 @@
 package rop.request;
 
-import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.lang.StringUtils;
+import rop.thirdparty.org.apache.commons.codec.binary.Base64;
+import rop.thirdparty.org.apache.commons.lang3.StringUtils;
 import rop.Constants;
 
 import java.io.UnsupportedEncodingException;

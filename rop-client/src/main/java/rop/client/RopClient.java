@@ -100,6 +100,12 @@ public interface RopClient {
     ClientRequest buildClientRequest();
 
 	/**
+	 * 创建一个新的服务请求
+	 * @return
+	 */
+	ClientRequest buildClientRequest(int connTimeout,int readTimeout);
+
+	/**
 	 * 销毁退出
 	 */
 	void destroy();

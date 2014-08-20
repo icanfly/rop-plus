@@ -1,10 +1,8 @@
 package rop.impl;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.MessageSourceAccessor;
@@ -18,8 +16,7 @@ import rop.converter.ConverterContainer;
 import rop.error.MainErrors;
 import rop.error.SubErrors;
 import rop.event.*;
-import rop.marshaller.FastjsonRopMarshaller;
-import rop.marshaller.XStreamXmlRopMarshaller;
+import rop.json.FastjsonRopMarshaller;
 import rop.request.SystemParameterNames;
 import rop.request.UploadFileConverter;
 import rop.response.*;
@@ -28,6 +25,7 @@ import rop.security.SecurityManager;
 import rop.session.DefaultSessionManager;
 import rop.session.SessionBindInterceptor;
 import rop.session.SessionManager;
+import rop.thirdparty.com.google.common.util.concurrent.ThreadFactoryBuilder;
 import rop.utils.RopUtils;
 
 import javax.servlet.http.HttpServletRequest;
@@ -47,8 +45,6 @@ import java.util.concurrent.*;
  */
 public class AnnotationServletServiceRouter implements ServiceRouter {
 
-	public static final String APPLICATION_XML = "application/xml";
-
 	public static final String APPLICATION_JSON = "application/json";
 	public static final String ACCESS_CONTROL_ALLOW_ORIGIN = "Access-Control-Allow-Origin";
 	public static final String ACCESS_CONTROL_ALLOW_METHODS = "Access-Control-Allow-Methods";
@@ -60,9 +56,7 @@ public class AnnotationServletServiceRouter implements ServiceRouter {
 
 	private ServiceMethodAdapter serviceMethodAdapter = new AnnotationServiceMethodAdapter();
 
-	private RopMarshaller xmlMarshallerRop = new XStreamXmlRopMarshaller();
-
-	private RopMarshaller jsonMarshallerRop = new FastjsonRopMarshaller();
+	private RopMarshaller ropMarshaller = new FastjsonRopMarshaller();
 
 	private RequestContextBuilder requestContextBuilder;
 
@@ -140,7 +134,7 @@ public class AnnotationServletServiceRouter implements ServiceRouter {
 			Future<RopResponse> future = this.threadPoolExecutor.submit(runnable);
 			RopResponse ropResponse = future.get(serviceMethodTimeout, TimeUnit.SECONDS);
 
-			writeResponse(servletRequest, servletResponse, ropResponse, ServletRequestContextBuilder.getResponseFormat(servletRequest), jsonpCallback);
+			writeResponse(servletRequest, servletResponse, ropResponse, jsonpCallback);
 
 		} catch (RejectedExecutionException ree) {//超过最大的服务平台的最大资源限制，无法提供服务
 			if (logger.isInfoEnabled()) {
@@ -148,7 +142,7 @@ public class AnnotationServletServiceRouter implements ServiceRouter {
 			}
 
 			RejectedServiceResponse ropResponse = new RejectedServiceResponse(ServletRequestContextBuilder.getLocale(servletRequest));
-			writeResponse(servletRequest, servletResponse, ropResponse, ServletRequestContextBuilder.getResponseFormat(servletRequest), jsonpCallback);
+			writeResponse(servletRequest, servletResponse, ropResponse, jsonpCallback);
 
 			fireErrorEvent(servletRequest, beginTime, ropResponse);
 		} catch (TimeoutException e) {//服务时间超限
@@ -157,7 +151,7 @@ public class AnnotationServletServiceRouter implements ServiceRouter {
 			}
 
 			ServiceTimeoutErrorResponse ropResponse = new ServiceTimeoutErrorResponse(method, ServletRequestContextBuilder.getLocale(servletRequest), serviceMethodTimeout);
-			writeResponse(servletRequest, servletResponse, ropResponse, ServletRequestContextBuilder.getResponseFormat(servletRequest), jsonpCallback);
+			writeResponse(servletRequest, servletResponse, ropResponse,jsonpCallback);
 
 			fireErrorEvent(servletRequest, beginTime, ropResponse);
 
@@ -166,7 +160,7 @@ public class AnnotationServletServiceRouter implements ServiceRouter {
 				logger.info("调用服务方法:" + method + "(" + version + ")，产生异常", throwable);
 			}
 			ServiceUnavailableErrorResponse ropResponse = new ServiceUnavailableErrorResponse(method, ServletRequestContextBuilder.getLocale(servletRequest), throwable);
-			writeResponse(servletRequest, servletResponse, ropResponse, ServletRequestContextBuilder.getResponseFormat(servletRequest), jsonpCallback);
+			writeResponse(servletRequest, servletResponse, ropResponse, jsonpCallback);
 
 			fireErrorEvent(servletRequest, beginTime, ropResponse);
 		}
@@ -608,18 +602,13 @@ public class AnnotationServletServiceRouter implements ServiceRouter {
 		}
 	}
 
-	private void writeResponse(HttpServletRequest request, HttpServletResponse httpServletResponse, RopResponse ropResponse, MessageFormat messageFormat, String jsonpCallback) {
+	private void writeResponse(HttpServletRequest request, HttpServletResponse httpServletResponse, RopResponse ropResponse,String jsonpCallback) {
 		try {
 
-			RopMarshaller ropMarshaller = null;
-			String contentType = null;
-			if (messageFormat == MessageFormat.xml) {
-				ropMarshaller = xmlMarshallerRop;
-				contentType = APPLICATION_XML;
-			} else {
-				ropMarshaller = jsonMarshallerRop;
-				contentType = APPLICATION_JSON;
-			}
+			/**
+			 * edit by luopeng 取消了XML格式数据返回支持，简单就好
+			 */
+			String contentType = APPLICATION_JSON;
 
 			String outContent = null;
 			try {
@@ -627,8 +616,6 @@ public class AnnotationServletServiceRouter implements ServiceRouter {
 				if (logger.isDebugEnabled()) {
 					logger.debug("RopResponse：" + outContent);
 				}
-
-
 			} catch (Exception e) {
 				//防止序列化出错
 				String method = request.getParameter(SystemParameterNames.getMethod());

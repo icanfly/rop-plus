@@ -71,18 +71,11 @@ public interface RopRequestContext {
 	void removeSession();
 
 	/**
-	 * 获取报文格式化参数
+	 * 获取报文格式参数
 	 *
 	 * @return
 	 */
 	String getFormat();
-
-	/**
-	 * 获取响应的格式
-	 *
-	 * @return
-	 */
-	MessageFormat getMessageFormat();
 
 	/**
 	 * 获取本地化对象

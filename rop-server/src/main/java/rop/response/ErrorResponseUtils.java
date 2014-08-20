@@ -2,11 +2,11 @@ package rop.response;
 
 import rop.error.MainErrors;
 import rop.error.SubErrors;
-import rop.security.*;
+import rop.security.MainError;
+import rop.security.MainErrorType;
+import rop.security.SubError;
+import rop.security.SubErrorType;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlRootElement;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;

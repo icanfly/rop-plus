@@ -1,13 +1,12 @@
 package rop.utils;
 
-import com.google.common.collect.Maps;
-import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.lang.LocaleUtils;
-import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import rop.Constants;
 import rop.RopException;
+import rop.thirdparty.org.apache.commons.lang3.LocaleUtils;
+import rop.thirdparty.org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -175,7 +174,7 @@ public class RopUtils {
 
 	public static Map<String,String> decryptExtInfo(String extInfoStr){
 		if(StringUtils.isBlank(extInfoStr)){
-			return Maps.newHashMapWithExpectedSize(2);
+			return new HashMap<String,String>(2);
 		}
 
 		String extInfo = null;
@@ -185,7 +184,7 @@ public class RopUtils {
 			throw new RopException(e);
 		}
 
-		Map<String,String> extInfoMap = Maps.newHashMapWithExpectedSize(2);
+		Map<String,String> extInfoMap = new HashMap<String,String>(2);
 		String[] params = StringUtils.split(extInfo,"\002");
 		for(String param : params){
 			String[] paramKV = StringUtils.split(param,"\001");
@@ -196,23 +195,5 @@ public class RopUtils {
 		}
 		return extInfoMap;
 	}
-
-	public static void main(String[] args) {
-
-		Map<String,String> paramMap = Maps.newHashMap();
-
-		paramMap.put("key1","value1");
-		paramMap.put("key2","value2");
-
-		String result = encryptExtInfo(paramMap);
-
-		System.out.println(result);
-
-		Map<String,String> paramMap2 = decryptExtInfo(result);
-
-		System.out.println(paramMap2);
-
-	}
-
 }
 

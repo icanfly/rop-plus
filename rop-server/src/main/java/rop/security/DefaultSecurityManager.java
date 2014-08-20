@@ -168,11 +168,6 @@ public class DefaultSecurityManager implements SecurityManager {
             return mainError;
         }
 
-        //8.检查 format
-        if (!MessageFormat.isValidFormat(rrc.getFormat())) {
-            return MainErrors.getError(MainErrorType.INVALID_FORMAT, rrc.getLocale());
-        }
-
         return null;
     }
 

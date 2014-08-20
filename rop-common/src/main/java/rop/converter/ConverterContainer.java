@@ -1,7 +1,6 @@
 package rop.converter;
 
-import com.google.common.collect.Maps;
-
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -11,7 +10,7 @@ import java.util.Map;
  */
 public class ConverterContainer {
 
-	private Map<Class<?>,RopConverter<?>> converters = Maps.newHashMap();
+	private Map<Class<?>,RopConverter<?>> converters = new HashMap<Class<?>,RopConverter<?>>(2);
 
 	public void addConverter(RopConverter<?> converter){
 		if(converter != null){

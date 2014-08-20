@@ -1,7 +1,5 @@
 package rop.impl;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import org.apache.commons.fileupload.FileItem;
 import rop.*;
 import rop.annotation.HttpAction;
@@ -10,12 +8,8 @@ import rop.request.SystemParameterNames;
 import rop.response.RopResponse;
 import rop.security.MainError;
 import rop.session.Session;
-import rop.utils.RopUtils;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 /**
  * <pre>
@@ -43,8 +37,6 @@ public class SimpleRopRequestContext implements RopRequestContext {
 	private Locale locale;
 
 	private String format;
-
-	public static ThreadLocal<MessageFormat> messageFormat = new ThreadLocal<MessageFormat>();
 
 	private String sign;
 
@@ -86,7 +78,7 @@ public class SimpleRopRequestContext implements RopRequestContext {
 	/**
 	 * 文件上传Item
 	 */
-	private List<FileItem> fileItems = Lists.newLinkedList();
+	private List<FileItem> fileItems = new LinkedList<FileItem>();
 
 	/**
 	 * 调用者版本信息
@@ -204,11 +196,6 @@ public class SimpleRopRequestContext implements RopRequestContext {
 	}
 
 	@Override
-	public MessageFormat getMessageFormat() {
-		return messageFormat.get();
-	}
-
-	@Override
 	public RopResponse getRopResponse() {
 		return this.ropResponse;
 	}
@@ -233,10 +220,6 @@ public class SimpleRopRequestContext implements RopRequestContext {
 
 	public void setServiceMethodHandler(ServiceMethodHandler serviceMethodHandler) {
 		this.serviceMethodHandler = serviceMethodHandler;
-	}
-
-	public void setMessageFormat(MessageFormat messageFormat) {
-		this.messageFormat.set(messageFormat);
 	}
 
 	@Override

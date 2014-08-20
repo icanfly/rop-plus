@@ -1,6 +1,5 @@
 package rop.impl;
 
-import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
@@ -11,8 +10,8 @@ import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 import rop.*;
 import rop.annotation.*;
-import rop.request.ServiceRequest;
 import rop.request.RequestUtils;
+import rop.request.ServiceRequest;
 import rop.request.UploadFile;
 import rop.session.SessionManager;
 
@@ -140,7 +139,7 @@ public class DefaultRopContext implements RopContext {
                                 serviceMethodHandler.setHandler(context.getBean(beanName)); //handler
                                 serviceMethodHandler.setHandlerMethod(method); //handler'method
 
-								List<Class<?>> methodParameterTypes = Lists.newArrayList();
+								List<Class<?>> methodParameterTypes = new ArrayList<Class<?>>();
 								Class<?>[] parameterTypes = method.getParameterTypes();
 								for(Class<?> type : parameterTypes){
 									if(!ClassUtils.isAssignable(RopRequestContext.class, type) && !ClassUtils.isAssignable(ServiceRequest.class, type)){

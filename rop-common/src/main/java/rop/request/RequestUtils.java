@@ -21,14 +21,14 @@ public class RequestUtils {
 	private static Logger logger = LoggerFactory.getLogger(RequestUtils.class);
 
 	public static Set<String> getIgnoreSignFieldNames(Class<?> classType) {
-		final Set<String> igoreSignFieldNames = new HashSet<>(1);
+		final Set<String> igoreSignFieldNames = new HashSet<String>(1);
 		igoreSignFieldNames.add(SystemParameterNames.getSign());
 		igoreSignFieldNames.addAll(_getIgnoreSignFieldNames(classType));
 		return igoreSignFieldNames;
 	}
 
 	public static Set<String> getIgnoreSignFieldNames(List<Class<?>> classTypes) {
-		final Set<String> igoreSignFieldNames = new HashSet<>(1);
+		final Set<String> igoreSignFieldNames = new HashSet<String>(1);
 		igoreSignFieldNames.add(SystemParameterNames.getSign());
 		for(Class<?> classType : classTypes){
 			igoreSignFieldNames.addAll(_getIgnoreSignFieldNames(classType));
@@ -37,7 +37,7 @@ public class RequestUtils {
 	}
 
 	private static Set<String> _getIgnoreSignFieldNames(Class<?> classType) {
-		final Set<String> igoreSignFieldNames = new HashSet<>(1);
+		final Set<String> igoreSignFieldNames = new HashSet<String>(1);
 		if (classType != null) {
 			if (logger.isDebugEnabled()) {
 				logger.debug("获取" + classType.getCanonicalName() + "不需要签名的属性");

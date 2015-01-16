@@ -217,7 +217,7 @@ public class DefaultRopClient implements RopClient {
 
 		private Map<String, String> bodyParamMap = new HashMap<String, String>(4);
 
-		private Set<String> ignoreSignParams = new HashSet<>();
+		private Set<String> ignoreSignParams = new HashSet<String>();
 
 		private int connTimeout ;
 
@@ -318,7 +318,11 @@ public class DefaultRopClient implements RopClient {
 			}
 			headers.put(SystemParameterNames.getTimestamp(), headerParamMap.get(SystemParameterNames.getTimestamp()));
 			headers.put(SystemParameterNames.getAppKey(), headerParamMap.get(SystemParameterNames.getAppKey()));
-			headers.put(SystemParameterNames.getFormat(), headerParamMap.get(SystemParameterNames.getFormat()));
+
+			if(headerParamMap.get(SystemParameterNames.getFormat()) != null){
+				headers.put(SystemParameterNames.getFormat(), headerParamMap.get(SystemParameterNames.getFormat()));
+			}
+
 			if (headerParamMap.get(SystemParameterNames.getJsonp()) != null) {
 				headers.put(SystemParameterNames.getJsonp(), headerParamMap.get(SystemParameterNames.getJsonp()));
 			}
